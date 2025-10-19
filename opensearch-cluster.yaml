@@ -1,0 +1,52 @@
+apiVersion: opensearch.opster.io/v1
+kind: OpenSearchCluster
+metadata:
+  name: my-first-cluster                # used to identify resources in Kubernetes
+  namespace: default                    # where the cluster will be deployed
+spec:
+  # Security configuration for the cluster
+  security:                             
+    config:                             # used to specify security config (TLS certificates, roles, ...)
+    tls:
+       http:
+         generate: true                 # generate TLS certificates for HTTP
+       transport:
+         generate: true                 # generate TLS certificates for transport
+         perNode: true                  # unique certificate for each node
+  # General settings for whole cluster
+  general:
+    httpPort: 9200                      # default OpenSearch REST API port
+    serviceName: my-first-cluster       # name of the Kubernetes service
+    version: 2.14.0
+    pluginsList: ["repository-s3"]      # OpenSearch plugins to install
+    drainDataNodes: true
+  # Dashboards configuration
+  dashboards:
+    tls:
+      enable: true                      # enable tls
+      generate: true
+    version: 2.14.0
+    enable: true
+    replicas: 1                         # cound of pods ("OpenSearch Node")
+    resources:                          # resource for Dashboards pod
+      requests:
+         memory: "512Mi"
+         cpu: "200m"
+      limits:
+         memory: "512Mi"
+         cpu: "200m"
+  nodePools:                            # core node pool
+    - component: masters                # name of the group
+      replicas: 3                       # count of replicas -> change to 1 if your test lab has ressources constraints
+      resources:                        # ressources per Pod (per OpenSearch node)
+         requests:
+            memory: "4Gi"
+            cpu: "1000m"
+         limits:
+            memory: "4Gi"
+            cpu: "1000m"
+      roles:                            # roles assigned to "OpenSearch nodes"
+        - "data"
+        - "cluster_manager"
+      persistence:
+         emptyDir: {}                   # ephemeral storage

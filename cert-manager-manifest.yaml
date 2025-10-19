@@ -1,0 +1,76 @@
+# 1) Temporary self-signed ClusterIssuer (bootstrap only)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-cluster-issuer
+spec:
+  selfSigned: {}
+---
+# 2) Root CA certificate (stored as a secret in the target namespace)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: my-first-cluster-root-ca
+  namespace: opensearch-prod
+spec:
+  isCA: true
+  commonName: my-first-cluster-root-ca
+  secretName: my-first-cluster-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+---
+# 3) ClusterIssuer that uses the CA secret
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: my-first-cluster-ca-issuer
+spec:
+  ca:
+    secretName: my-first-cluster-ca-secret
+---
+# 4) Transport certificate signed by CA (per-cluster secret name)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: my-first-cluster-transport
+  namespace: opensearch-prod
+spec:
+  secretName: my-first-cluster-transport-cert
+  duration: 8760h
+  renewBefore: 720h
+  commonName: my-first-cluster
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages: ["server auth","client auth"]
+  dnsNames:
+    - my-first-cluster
+    - my-first-cluster.opensearch-prod.svc
+    - my-first-cluster.opensearch-prod.svc.cluster.local
+    - "*.my-first-cluster.opensearch-prod.svc.cluster.local"
+  issuerRef:
+    name: my-first-cluster-ca-issuer
+    kind: ClusterIssuer
+---
+# 5) Admin client certificate — used by operator to call securityadmin
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: my-first-cluster-admin
+  namespace: opensearch-prod
+spec:
+  secretName: my-first-cluster-admin-secret
+  commonName: "opensearch-admin"
+  subject:
+    organizations: ["ops"]
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages: ["client auth"]
+  issuerRef:
+    name: my-first-cluster-ca-issuer
+    kind: ClusterIssuer
