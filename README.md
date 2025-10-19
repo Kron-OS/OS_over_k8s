@@ -82,7 +82,7 @@ Finally, we will enable th eminikube dashboard with `minikube dashboard`:
 You can get the address again with `minikube dashboard --url`. Your dashboard should open on your default webbrowser automatically.
 
 
-## 1 - Minikube setup
+## 1 - Minikube & OpenSearch Operator setup
 
 According to the OpenSearch documentation, and as in a classic docker installation, we have to adjust the `max_map_count`, so first run the following command:
 - ```bash
@@ -100,5 +100,85 @@ This open-source kubernetes operator helps automate the deployment.
   ```
 2. Install OpenSearch Kubernetes Operator:
   ```bash
-  
+  GOTOOLCHAIN=go1.24.4 make build manifests
   ```
+3. Start Kubernetes:
+  ```bash
+  minikube start
+  ```
+4. Check the config: (it should look like [https://docs.opensearch.org/latest/install-and-configure/install-opensearch/operator/#use-a-local-installation](https://docs.opensearch.org/latest/install-and-configure/install-opensearch/operator/#use-a-local-installation))
+  ```bash
+  cat ~/.kube/config
+  ```
+5. Install CustomResourceDefinition to teache Kubernetes about OpenSearch-specific resources:
+  ```bash
+  make install
+  ```
+6. Start the operator process
+  ```bash
+  make run
+  ```
+
+## 2 - OpenSearch Cluster first Deployment
+
+Now, we are ready to make our first OpenSearch cluster Deployment. From the example section of the documentatio, we can deploy a single OpenSearch pod with following procedure.
+
+### Cluster configuration
+
+From the documentation, we can find this simple configuration file:
+```yaml
+apiVersion: opensearch.opster.io/v1
+kind: OpenSearchCluster
+metadata:
+  name: my-first-cluster                # used to identify resources in Kubernetes
+  namespace: default                    # where the cluster will be deployed
+spec:
+  # Security configuration for the cluster
+  security:                             
+    config:                             # used to specify security config (TLS certificates, roles, ...)
+    tls:
+       http:
+         generate: true                 # generate TLS certificates for HTTP
+       transport:
+         generate: true                 # generate TLS certificates for transport
+         perNode: true                  # unique certificate for each node
+  # General settings for whole cluster
+  general:
+    httpPort: 9200                      # default OpenSearch REST API port
+    serviceName: my-first-cluster       # name of the Kubernetes service
+    version: 2.14.0
+    pluginsList: ["repository-s3"]      # OpenSearch plugins to install
+    drainDataNodes: true
+  # Dashboards configuration
+  dashboards:
+    tls:
+      enable: true                      # enable tls
+      generate: true
+    version: 2.14.0
+    enable: true
+    replicas: 1                         # cound of pods
+    resources:                          # minimum ressources
+      requests:
+         memory: "512Mi"
+         cpu: "200m"
+      limits:
+         memory: "512Mi"
+         cpu: "200m"
+  nodePools:                            # core node pool
+    - component: masters                # name of the group
+      replicas: 3                       # count of replicas
+      resources:                        # minimum ressources per 
+         requests:
+            memory: "4Gi"
+            cpu: "1000m"
+         limits:
+            memory: "4Gi"
+            cpu: "1000m"
+      roles:
+        - "data"
+        - "cluster_manager"
+      persistence:
+         emptyDir: {}
+
+```
+
