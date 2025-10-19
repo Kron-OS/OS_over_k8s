@@ -118,6 +118,10 @@ This open-source kubernetes operator helps automate the deployment.
   ```bash
   make run
   ```
+7. Check operator deployment:
+  ```bash
+  kubectl get crds | grep opensearch
+  ```
 
 ## 2 - OpenSearch Cluster first Deployment
 
@@ -156,8 +160,8 @@ spec:
       generate: true
     version: 2.14.0
     enable: true
-    replicas: 1                         # cound of pods
-    resources:                          # minimum ressources
+    replicas: 1                         # cound of pods ("OpenSearch Node")
+    resources:                          # resource for Dashboards pod
       requests:
          memory: "512Mi"
          cpu: "200m"
@@ -166,19 +170,43 @@ spec:
          cpu: "200m"
   nodePools:                            # core node pool
     - component: masters                # name of the group
-      replicas: 3                       # count of replicas
-      resources:                        # minimum ressources per 
+      replicas: 3                       # count of replicas -> change to 1 if your test lab has ressources constraints
+      resources:                        # ressources per Pod (per OpenSearch node)
          requests:
             memory: "4Gi"
             cpu: "1000m"
          limits:
             memory: "4Gi"
             cpu: "1000m"
-      roles:
+      roles:                            # roles assigned to "OpenSearch nodes"
         - "data"
         - "cluster_manager"
       persistence:
-         emptyDir: {}
+         emptyDir: {}                   # ephemeral storage
 
 ```
 
+> Note that *"node"* in OpenSearch context refers to a Kubernetes *"pod"*, and not a Kubernetes "node".
+
+### Cluster Deployment
+
+To deploy the cluster, we now have to run the following command:
+```bash
+kubectl apply -f opensearch-cluster.yaml
+```
+
+Then, you can check your deployment with `minikube kubectl get svc`:
+```text
+NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                               AGE
+kubernetes                    ClusterIP   10.96.0.1        <none>        443/TCP                               75m
+my-first-cluster              ClusterIP   10.101.209.239   <none>        9200/TCP,9300/TCP,9600/TCP,9650/TCP   7m19s
+my-first-cluster-dashboards   ClusterIP   10.107.187.173   <none>        5601/TCP                              7m18s
+my-first-cluster-discovery    ClusterIP   None             <none>        9300/TCP                              7m19s
+my-first-cluster-masters      ClusterIP   None             <none>        9200/TCP,9300/TCP                     7m19s
+```
+
+
+To connect to your cluster, use the `port-forward` command accordingly to the last command:
+```bash
+kubectl port-forward svc/my-first-cluster-dashboards 5601
+```
