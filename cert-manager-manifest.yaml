@@ -1,3 +1,4 @@
+# THIS DOCUMENT HAS BEEN AI GENERATED - DO NOT USE IT
 # 1) Temporary self-signed ClusterIssuer (bootstrap only)
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
