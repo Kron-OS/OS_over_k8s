@@ -93,35 +93,36 @@ According to the OpenSearch documentation, and as in a classic docker installati
 
 This open-source kubernetes operator helps automate the deployment.
 
-1. Clone the operator repo:
-  ```bash
-  git clone https://github.com/opensearch-project/opensearch-k8s-operator
-  cd opensearch-k8s-operator/opensearch-operator
-  ```
-2. Install OpenSearch Kubernetes Operator:
-  ```bash
-  GOTOOLCHAIN=go1.24.4 make build manifests
-  ```
-3. Start Kubernetes:
+
+1. Run minikube and enable addons:
   ```bash
   minikube start
+  minikube status
+
+  minikube addons enable storage-provisioner
+  minikube addons enable default-storageclass
   ```
-4. Check the config: (it should look like [https://docs.opensearch.org/latest/install-and-configure/install-opensearch/operator/#use-a-local-installation](https://docs.opensearch.org/latest/install-and-configure/install-opensearch/operator/#use-a-local-installation))
+2. Add the helm repo:
   ```bash
-  cat ~/.kube/config
+  helm repo add opensearch-operator https://opensearch-project.github.io/opensearch-k8s-operator/
+  helm repo update
+  helm repo list
   ```
-5. Install CustomResourceDefinition to teache Kubernetes about OpenSearch-specific resources:
+3. Create a namespace:
   ```bash
-  make install
+  kubectl create namespace opensearch-operator-system
+  kubectl get namespaces
   ```
-6. Start the operator process
+
+3. Install OpenSearch Kubernetes Operator:
   ```bash
-  make run
+  helm install opensearch-operator opensearch-operator/opensearch-operator --namespace opensearch-operator-system
+  kubectl get pods -n opensearch-operator-system --watch
+  kubectl logs -n opensearch-operator-system -l control-plane=controller-manager --tail=50
+  kubectl get crd | grep opensearch
+
   ```
-7. Check operator deployment:
-  ```bash
-  kubectl get crds | grep opensearch
-  ```
+
 
 ## 2 - OpenSearch Cluster first Deployment
 
@@ -197,14 +198,14 @@ kubectl apply -f opensearch-cluster.yaml
 
 Then, you can check your deployment with `minikube kubectl get svc`:
 ```text
-NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                               AGE
-kubernetes                    ClusterIP   10.96.0.1        <none>        443/TCP                               75m
-my-first-cluster              ClusterIP   10.101.209.239   <none>        9200/TCP,9300/TCP,9600/TCP,9650/TCP   7m19s
-my-first-cluster-dashboards   ClusterIP   10.107.187.173   <none>        5601/TCP                              7m18s
-my-first-cluster-discovery    ClusterIP   None             <none>        9300/TCP                              7m19s
-my-first-cluster-masters      ClusterIP   None             <none>        9200/TCP,9300/TCP                     7m19s
+NAME                                                      READY   STATUS    RESTARTS       AGE
+my-first-cluster-bootstrap-0                              1/1     Running   0              8m39s
+my-first-cluster-dashboards-6469b98fd7-mk9s7              0/1     Running   2 (107s ago)   8m28s
+my-first-cluster-masters-0                                0/1     Running   0              8m39s
+my-first-cluster-securityconfig-update-2tq2w              1/1     Running   0              8m40s
+opensearch-operator-controller-manager-6d6c6b88c8-x52dw   2/2     Running   2 (27m ago)    30m
 ```
-
+The master can take some time to start, during this time the dashboard will not be able to start.
 
 To connect to your cluster, use the `port-forward` command accordingly to the last command:
 ```bash
